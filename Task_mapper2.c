@@ -15,6 +15,7 @@ struct TASK_RUNNING task_run[100];
 int index_task_run = 0;
 int CPUs[CORES];
 int CPUs_index = 0;
+const char *program;
 
 int index_PS = 0;
 // Added latest to check already running threads  on CPUs
@@ -101,7 +102,7 @@ void PS(void) {
 
     } // for close
 
-    if (strcmp(cmd, " pagerank") == 0) {
+    if (strcmp(&cmd[1], program) == 0) {
       printf("TID:%d CMD:%s Len:%d\n", tid, cmd, strlen(cmd));
       Schedule(tid, 0);
     }
@@ -122,7 +123,7 @@ void Schedule(pid_t tid, int core) {
     printf("Error for schedule set affinity\n");
 }
 
-void init_CPUs() {
+void init_CPUs(void) {
   CPUs_index = 0;
   int i;
   int count = 0;
@@ -161,8 +162,13 @@ void init_CPUs() {
 }
 
 int main(int argc, char *argv[]) {
+  if (argc < 2) {
+      fprintf(stderr, "Usage: %s <program>\n", argv[0]);
+      return 1;
+  }
 
-  int ITER = 1000;
+  program = argv[1];
+
   while (1) {
     init_CPUs();
     PS();
