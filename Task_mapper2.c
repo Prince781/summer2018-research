@@ -1,3 +1,8 @@
+/**
+ * Authors:
+ *  Sayak Chakraborti
+ *  Princeton Ferro
+ */
 #define _GNU_SOURCE
 #include <pthread.h>
 #include <sched.h>
