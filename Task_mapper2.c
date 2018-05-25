@@ -120,7 +120,7 @@ void Schedule(pid_t tid, int core) {
     printf("Set TID:%d to CPU:%d\n", tid, CPUs[index_PS]);
     index_PS++;
   } else
-    printf("Error for schedule set affinity\n");
+      perror("sched_setaffinity");
 }
 
 void init_CPUs(void) {
