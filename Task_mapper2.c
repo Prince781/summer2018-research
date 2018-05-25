@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/sysinfo.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
 #define MAX_THREADS 1024
 
@@ -30,7 +32,15 @@ int num_cpus;
 const char *schedule;
 const char *program;
 
-int index_PS = 0;
+int thread_to_socket[MAX_THREADS];
+int num_tts;
+
+int compare_tids(const void *arg1, const void *arg2) {
+    return *(pid_t*)arg1 - *(pid_t*)arg2;
+}
+
+void Schedule(pid_t tid, int sock_id);
+
 // Added latest to check already running threads  on CPUs
 void PS(void) {
   char cmd[1024];
@@ -46,6 +56,9 @@ void PS(void) {
     if (g == '\n')
       break;
   }
+
+  pid_t threads[MAX_THREADS];
+  int num_threads = 0;
 
   while ((g = fgetc(fp)) != EOF) {
     fseek(fp, -1, SEEK_CUR);
@@ -115,12 +128,16 @@ void PS(void) {
     } // for close
 
     if (strcmp(&cmd[1], program) == 0) {
-      printf("TID:%d CMD:%s Len:%d\n", tid, cmd, strlen(cmd));
-      Schedule(tid, 0);
+      threads[num_threads++] = tid;
     }
   } // while close
 
   pclose(fp);
+
+  qsort(threads, num_threads, sizeof threads[0], &compare_tids);
+  for (int t=0; t<num_threads; ++t) {
+      Schedule(threads[t], thread_to_socket[t]);
+  }
 } // function close
 
 void Schedule(pid_t tid, int sock_id) {
@@ -179,7 +196,39 @@ void init_CPUs(void) {
     num_sockets++;
 }
 
-void init_schedule(void) {
+bool init_schedule(void) {
+    FILE *fp;
+
+    bool ret = true;
+    int lineno = 1;
+    if ((fp = fopen(schedule, "r"))) {
+        int thread, socket;
+        while (fscanf(fp, "%d %d ", &thread, &socket) == 2) {
+            if (thread >= num_cpus) {
+                fprintf(stderr, "%s @ line %d: thread ID must be < num_cpus\n",
+                        schedule, lineno);
+                break;
+            }
+            if (socket >= num_sockets) {
+                fprintf(stderr, "%s @ line %d: socket ID must be < num_sockets\n",
+                        schedule, lineno);
+                break;
+            }
+            thread_to_socket[thread] = socket;
+            num_tts++;
+            lineno++;
+        }
+        if (!feof(fp)) {
+            fprintf(stderr, "%s: could not parse line %d", schedule, lineno);
+            ret = false;
+        }
+        fclose(fp);
+    } else {
+        perror("could not open schedule");
+        return false;
+    }
+
+    return ret;
 }
 
 int main(int argc, char *argv[]) {
