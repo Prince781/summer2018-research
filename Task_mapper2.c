@@ -120,7 +120,7 @@ void PS(void) {
     }
   } // while close
 
-  fclose(fp);
+  pclose(fp);
 } // function close
 
 void Schedule(pid_t tid, int sock_id) {
@@ -179,6 +179,9 @@ void init_CPUs(void) {
     num_sockets++;
 }
 
+void init_schedule(void) {
+}
+
 int main(int argc, char *argv[]) {
   if (argc < 3) {
       fprintf(stderr, "Usage: %s <program> <schedule>\n", argv[0]);
@@ -197,6 +200,8 @@ int main(int argc, char *argv[]) {
           printf(" %d", sockets[i].cpus[j]);
       printf("\n");
   }
+
+  init_schedule();
 
   while (1) {
     PS();
