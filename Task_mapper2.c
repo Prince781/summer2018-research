@@ -3,8 +3,8 @@
 #include <sched.h>
 #include <stdio.h>
 #include <string.h>
-#include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #define CORES 36
 struct TASK_RUNNING {
   pid_t tid;
@@ -119,8 +119,10 @@ void Schedule(pid_t tid, int core) {
   if (sched_setaffinity(tid, sizeof(set), &set) != -1) {
     printf("Set TID:%d to CPU:%d\n", tid, CPUs[index_PS]);
     index_PS++;
-  } else
-      perror("sched_setaffinity");
+  } else {
+      fprintf(stderr, "Failed to set TID %d to CPU %d: %s\n", 
+              tid, CPUs[index_PS], strerror(errno));
+  }
 }
 
 void init_CPUs(void) {
