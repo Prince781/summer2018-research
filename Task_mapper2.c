@@ -136,6 +136,7 @@ void PS(void) {
 
   qsort(threads, num_threads, sizeof threads[0], &compare_tids);
   for (int t=0; t<num_threads; ++t) {
+      printf("scheduling thread #%d\n", t);
       Schedule(threads[t], thread_to_socket[t]);
   }
 } // function close
@@ -146,7 +147,7 @@ void Schedule(pid_t tid, int sock_id) {
   CPU_ZERO(&set);
   CPU_SET(cpu, &set);
   if (sched_setaffinity(tid, sizeof set, &set) != -1) {
-    printf("Set TID:%d to CPU:%d\n", tid, cpu);
+    printf("Set TID:%d to CPU:%d on socket %d\n", tid, cpu, sock_id);
     sockets[sock_id].cpu = (sockets[sock_id].cpu+ 1) % sockets[sock_id].num_cpus;
   } else {
       fprintf(stderr, "Failed to set TID %d to CPU %d: %s\n", 
@@ -228,6 +229,11 @@ bool init_schedule(void) {
         return false;
     }
 
+    if (num_tts != num_cpus) {
+        fprintf(stderr, "needed: %d entries; found: %d\n", num_cpus, num_tts);
+        ret = false;
+    }
+
     return ret;
 }
 
@@ -250,7 +256,10 @@ int main(int argc, char *argv[]) {
       printf("\n");
   }
 
-  init_schedule();
+  if (!init_schedule()) {
+      fprintf(stderr, "There was a problem with the schedule. Aborting\n");
+      return 1;
+  }
 
   while (1) {
     PS();
