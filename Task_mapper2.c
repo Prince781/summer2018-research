@@ -5,16 +5,29 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#define CORES 36
-struct TASK_RUNNING {
-  pid_t tid;
-  int cpu;
+#include <sys/sysinfo.h>
+
+#define MAX_THREADS 1024
+
+struct cpu_socket {
+    int cpus[MAX_THREADS];   // thread number (on this socket) -> CPU number
+    int num_cpus;   // = num_cores * threads_per_core
+    int cpu;
 };
 
-struct TASK_RUNNING task_run[100];
-int index_task_run = 0;
-int CPUs[CORES];
-int CPUs_index = 0;
+struct cpu_socket sockets[MAX_THREADS];
+
+int num_sockets;
+
+struct cpu_info {
+    int core_id;
+    int sock_id;
+};
+
+struct cpu_info cpus[MAX_THREADS];
+int num_cpus;
+
+const char *schedule;
 const char *program;
 
 int index_PS = 0;
@@ -23,7 +36,6 @@ void PS(void) {
   char cmd[1024];
 
   snprintf(cmd, sizeof cmd, "ps -T -u %s,root", getlogin());
-  index_task_run = 0;
   // read PS_OUT to get information about current running processes
   FILE *fp = popen(cmd, "r");
   char g;
@@ -111,68 +123,82 @@ void PS(void) {
   fclose(fp);
 } // function close
 
-void Schedule(pid_t tid, int core) {
-
+void Schedule(pid_t tid, int sock_id) {
+  int cpu = sockets[sock_id].cpus[sockets[sock_id].cpu];
   cpu_set_t set;
   CPU_ZERO(&set);
-  CPU_SET(CPUs[index_PS], &set);
-  if (sched_setaffinity(tid, sizeof(set), &set) != -1) {
-    printf("Set TID:%d to CPU:%d\n", tid, CPUs[index_PS]);
-    index_PS++;
+  CPU_SET(cpu, &set);
+  if (sched_setaffinity(tid, sizeof set, &set) != -1) {
+    printf("Set TID:%d to CPU:%d\n", tid, cpu);
+    sockets[sock_id].cpu = (sockets[sock_id].cpu+ 1) % sockets[sock_id].num_cpus;
   } else {
       fprintf(stderr, "Failed to set TID %d to CPU %d: %s\n", 
-              tid, CPUs[index_PS], strerror(errno));
+              tid, cpu, strerror(errno));
   }
+}
+
+const struct cpu_info *get_cpu(int i) {
+    static struct cpu_info info;
+    FILE *fp = NULL;
+    char path[1024];
+
+    snprintf(path, sizeof path, "/sys/devices/system/cpu/cpu%d/topology/core_id", i);
+
+    if ((fp = fopen(path, "r"))) {
+        fscanf(fp, "%d", &info.core_id);
+        fclose(fp);
+    } else
+        return NULL;
+
+    snprintf(path, sizeof path, "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", i);
+    if ((fp = fopen(path, "r"))) {
+        fscanf(fp, "%d", &info.sock_id);
+        fclose(fp);
+    } else
+        return NULL;
+
+    return &info;
 }
 
 void init_CPUs(void) {
-  CPUs_index = 0;
-  int i;
-  int count = 0;
+    const struct cpu_info *ci;
+    int nprocs = get_nprocs();
 
-  /*
-     for(i=0;i<CORES;i++)
-     {
-     CPUs[i]=i;
-     }
-     */
+    for (int i=0; i<nprocs && (ci = get_cpu(i)); ++i) {
+        cpus[i] = *ci;
+        num_cpus = i+1;
+    }
 
-  for (i = 0; i < CORES / 4; i++) {
-    CPUs[i] = count;
-    count = count + 2;
-  }
+    for (int i=0; i<num_cpus; ++i) {
+        int sock_cpus = sockets[cpus[i].sock_id].num_cpus;
+        sockets[cpus[i].sock_id].cpus[sock_cpus] = i;
+        sockets[cpus[i].sock_id].num_cpus++;
+        num_sockets = cpus[i].sock_id > num_sockets ? cpus[i].sock_id : num_sockets;
+    }
 
-  count = 1;
-  for (i = CORES / 4; i < CORES / 2; i++) {
-    CPUs[i] = count;
-    count = count + 2;
-  }
-  count = CORES / 2;
-
-  for (i = CORES / 2; i < 3 * CORES / 4; i++) {
-    CPUs[i] = count;
-    count = count + 2;
-  }
-
-  count = CORES / 2 + 1;
-  for (i = 3 * CORES / 4; i < CORES; i++) {
-    CPUs[i] = count;
-    count = count + 2;
-  }
-
-  index_PS = 0;
+    num_sockets++;
 }
 
 int main(int argc, char *argv[]) {
-  if (argc < 2) {
-      fprintf(stderr, "Usage: %s <program>\n", argv[0]);
+  if (argc < 3) {
+      fprintf(stderr, "Usage: %s <program> <schedule>\n", argv[0]);
       return 1;
   }
 
   program = argv[1];
+  schedule = argv[2];
+
+  init_CPUs();
+
+  printf("Topology: %d threads across %d sockets:\n", num_cpus, num_sockets);
+  for (int i=0; i<num_sockets; ++i) {
+      printf(" socket %d has threads:", i);
+      for (int j=0; j<sockets[i].num_cpus; ++j)
+          printf(" %d", sockets[i].cpus[j]);
+      printf("\n");
+  }
 
   while (1) {
-    init_CPUs();
     PS();
     sleep(1);
   }
