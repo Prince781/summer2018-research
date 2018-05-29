@@ -132,7 +132,7 @@ void PS(void) {
 
     } // for close
 
-    if (strcmp(&cmd[1], program) == 0) {
+    if (strncmp(&cmd[1], program, strlen(&cmd[1])) == 0) {
       threads[num_threads++] = tid;
     }
   } // while close
