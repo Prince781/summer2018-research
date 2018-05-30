@@ -150,6 +150,15 @@ void PS(void) {
       printf("scheduling thread #%d\n", t);
       Schedule(threads[t], thread_to_socket[t]);
   }
+
+  for (int s=0; s<num_sockets; ++s) {
+      /**
+       * Schedule threads to the exact same hardware contexts
+       * the next time around, by starting off at the same location
+       * again.
+       */
+      sockets[s].cpu = 0;
+  }
 } // function close
 
 void Schedule(pid_t tid, int sock_id) {
