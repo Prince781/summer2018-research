@@ -18,9 +18,9 @@
 #define MAX_THREADS 1024
 
 struct cpu_socket {
-    int cpus[MAX_THREADS];   // thread number (on this socket) -> CPU number
-    int num_cpus;   // = num_cores * threads_per_core
-    int cpu;
+  int cpus[MAX_THREADS]; // thread number (on this socket) -> CPU number
+  int num_cpus;          // = num_cores * threads_per_core
+  int cpu;
 };
 
 struct cpu_socket sockets[MAX_THREADS];
@@ -28,8 +28,8 @@ struct cpu_socket sockets[MAX_THREADS];
 int num_sockets;
 
 struct cpu_info {
-    int core_id;
-    int sock_id;
+  int core_id;
+  int sock_id;
 };
 
 struct cpu_info cpus[MAX_THREADS];
@@ -42,12 +42,12 @@ int thread_to_socket[MAX_THREADS];
 int num_tts;
 
 void quit_handler(int sig) {
-	printf("%s.\n", strsignal(sig));
-	exit(0);
+  printf("%s.\n", strsignal(sig));
+  exit(0);
 }
 
 int compare_tids(const void *arg1, const void *arg2) {
-    return *(pid_t*)arg1 - *(pid_t*)arg2;
+  return *(pid_t *)arg1 - *(pid_t *)arg2;
 }
 
 void Schedule(pid_t tid, int sock_id);
@@ -146,18 +146,18 @@ void PS(void) {
   pclose(fp);
 
   qsort(threads, num_threads, sizeof threads[0], &compare_tids);
-  for (int t=0; t<num_threads; ++t) {
-      printf("scheduling thread #%d\n", t);
-      Schedule(threads[t], thread_to_socket[t]);
+  for (int t = 0; t < num_threads; ++t) {
+    printf("scheduling thread #%d\n", t);
+    Schedule(threads[t], thread_to_socket[t]);
   }
 
-  for (int s=0; s<num_sockets; ++s) {
-      /**
-       * Schedule threads to the exact same hardware contexts
-       * the next time around, by starting off at the same location
-       * again.
-       */
-      sockets[s].cpu = 0;
+  for (int s = 0; s < num_sockets; ++s) {
+    /**
+     * Schedule threads to the exact same hardware contexts
+     * the next time around, by starting off at the same location
+     * again.
+     */
+    sockets[s].cpu = 0;
   }
 } // function close
 
@@ -168,99 +168,102 @@ void Schedule(pid_t tid, int sock_id) {
   CPU_SET(cpu, &set);
   if (sched_setaffinity(tid, sizeof set, &set) != -1) {
     printf("Set TID:%d to CPU:%d on socket %d\n", tid, cpu, sock_id);
-    sockets[sock_id].cpu = (sockets[sock_id].cpu+ 1) % sockets[sock_id].num_cpus;
+    sockets[sock_id].cpu =
+        (sockets[sock_id].cpu + 1) % sockets[sock_id].num_cpus;
   } else {
-      fprintf(stderr, "Failed to set TID %d to CPU %d: %s\n", 
-              tid, cpu, strerror(errno));
+    fprintf(stderr, "Failed to set TID %d to CPU %d: %s\n", tid, cpu,
+            strerror(errno));
   }
 }
 
 const struct cpu_info *get_cpu(int i) {
-    static struct cpu_info info;
-    FILE *fp = NULL;
-    char path[1024];
+  static struct cpu_info info;
+  FILE *fp = NULL;
+  char path[1024];
 
-    snprintf(path, sizeof path, "/sys/devices/system/cpu/cpu%d/topology/core_id", i);
+  snprintf(path, sizeof path, "/sys/devices/system/cpu/cpu%d/topology/core_id",
+           i);
 
-    if ((fp = fopen(path, "r"))) {
-        fscanf(fp, "%d", &info.core_id);
-        fclose(fp);
-    } else
-        return NULL;
+  if ((fp = fopen(path, "r"))) {
+    fscanf(fp, "%d", &info.core_id);
+    fclose(fp);
+  } else
+    return NULL;
 
-    snprintf(path, sizeof path, "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", i);
-    if ((fp = fopen(path, "r"))) {
-        fscanf(fp, "%d", &info.sock_id);
-        fclose(fp);
-    } else
-        return NULL;
+  snprintf(path, sizeof path,
+           "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", i);
+  if ((fp = fopen(path, "r"))) {
+    fscanf(fp, "%d", &info.sock_id);
+    fclose(fp);
+  } else
+    return NULL;
 
-    return &info;
+  return &info;
 }
 
 void init_CPUs(void) {
-    const struct cpu_info *ci;
-    int nprocs = get_nprocs();
+  const struct cpu_info *ci;
+  int nprocs = get_nprocs();
 
-    for (int i=0; i<nprocs && (ci = get_cpu(i)); ++i) {
-        cpus[i] = *ci;
-        num_cpus = i+1;
-    }
+  for (int i = 0; i < nprocs && (ci = get_cpu(i)); ++i) {
+    cpus[i] = *ci;
+    num_cpus = i + 1;
+  }
 
-    for (int i=0; i<num_cpus; ++i) {
-        int sock_cpus = sockets[cpus[i].sock_id].num_cpus;
-        sockets[cpus[i].sock_id].cpus[sock_cpus] = i;
-        sockets[cpus[i].sock_id].num_cpus++;
-        num_sockets = cpus[i].sock_id > num_sockets ? cpus[i].sock_id : num_sockets;
-    }
+  for (int i = 0; i < num_cpus; ++i) {
+    int sock_cpus = sockets[cpus[i].sock_id].num_cpus;
+    sockets[cpus[i].sock_id].cpus[sock_cpus] = i;
+    sockets[cpus[i].sock_id].num_cpus++;
+    num_sockets = cpus[i].sock_id > num_sockets ? cpus[i].sock_id : num_sockets;
+  }
 
-    num_sockets++;
+  num_sockets++;
 }
 
 bool init_schedule(void) {
-    FILE *fp;
+  FILE *fp;
 
-    bool ret = true;
-    int lineno = 1;
-    if ((fp = fopen(schedule, "r"))) {
-        int thread, socket;
-        while (fscanf(fp, "%d %d ", &thread, &socket) == 2) {
-            if (thread >= num_cpus) {
-                fprintf(stderr, "%s @ line %d: thread ID must be < num_cpus\n",
-                        schedule, lineno);
-                break;
-            }
-            if (socket >= num_sockets) {
-                fprintf(stderr, "%s @ line %d: socket ID must be < num_sockets\n",
-                        schedule, lineno);
-                break;
-            }
-            thread_to_socket[thread] = socket;
-            num_tts++;
-            lineno++;
-        }
-        if (!feof(fp)) {
-            fprintf(stderr, "%s: could not parse line %d", schedule, lineno);
-            ret = false;
-        }
-        fclose(fp);
-    } else {
-        perror("could not open schedule");
-        return false;
+  bool ret = true;
+  int lineno = 1;
+  if ((fp = fopen(schedule, "r"))) {
+    int thread, socket;
+    while (fscanf(fp, "%d %d ", &thread, &socket) == 2) {
+      if (thread >= num_cpus) {
+        fprintf(stderr, "%s @ line %d: thread ID must be < num_cpus\n",
+                schedule, lineno);
+        break;
+      }
+      if (socket >= num_sockets) {
+        fprintf(stderr, "%s @ line %d: socket ID must be < num_sockets\n",
+                schedule, lineno);
+        break;
+      }
+      thread_to_socket[thread] = socket;
+      num_tts++;
+      lineno++;
     }
-
-    if (num_tts != num_cpus) {
-        fprintf(stderr, "needed: %d entries; found: %d\n", num_cpus, num_tts);
-        ret = false;
+    if (!feof(fp)) {
+      fprintf(stderr, "%s: could not parse line %d", schedule, lineno);
+      ret = false;
     }
+    fclose(fp);
+  } else {
+    perror("could not open schedule");
+    return false;
+  }
 
-    return ret;
+  if (num_tts != num_cpus) {
+    fprintf(stderr, "needed: %d entries; found: %d\n", num_cpus, num_tts);
+    ret = false;
+  }
+
+  return ret;
 }
 
 int main(int argc, char *argv[]) {
   if (argc < 3) {
-      fprintf(stderr, "Usage: %s <program> <schedule>\n", argv[0]);
-      return 1;
+    fprintf(stderr, "Usage: %s <program> <schedule>\n", argv[0]);
+    return 1;
   }
 
   program = argv[1];
@@ -273,16 +276,16 @@ int main(int argc, char *argv[]) {
   init_CPUs();
 
   printf("Topology: %d threads across %d sockets:\n", num_cpus, num_sockets);
-  for (int i=0; i<num_sockets; ++i) {
-      printf(" socket %d has threads:", i);
-      for (int j=0; j<sockets[i].num_cpus; ++j)
-          printf(" %d", sockets[i].cpus[j]);
-      printf("\n");
+  for (int i = 0; i < num_sockets; ++i) {
+    printf(" socket %d has threads:", i);
+    for (int j = 0; j < sockets[i].num_cpus; ++j)
+      printf(" %d", sockets[i].cpus[j]);
+    printf("\n");
   }
 
   if (!init_schedule()) {
-      fprintf(stderr, "There was a problem with the schedule. Aborting\n");
-      return 1;
+    fprintf(stderr, "There was a problem with the schedule. Aborting\n");
+    return 1;
   }
 
   while (1) {
