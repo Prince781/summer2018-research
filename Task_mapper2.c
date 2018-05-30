@@ -13,6 +13,7 @@
 #include <sys/sysinfo.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #define MAX_THREADS 1024
 
@@ -39,6 +40,11 @@ const char *program;
 
 int thread_to_socket[MAX_THREADS];
 int num_tts;
+
+void quit_handler(int sig) {
+	printf("%s.\n", strsignal(sig));
+	exit(0);
+}
 
 int compare_tids(const void *arg1, const void *arg2) {
     return *(pid_t*)arg1 - *(pid_t*)arg2;
@@ -250,6 +256,10 @@ int main(int argc, char *argv[]) {
 
   program = argv[1];
   schedule = argv[2];
+
+  signal(SIGTERM, &quit_handler);
+  signal(SIGQUIT, &quit_handler);
+  signal(SIGINT, &quit_handler);
 
   init_CPUs();
 
