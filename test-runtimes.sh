@@ -76,21 +76,22 @@ function run_test() {
 	cd ..
 }
 
-# run_test pagerank runtime bin/example_apps/pagerank file ~/Downloads/soc-LiveJournal1.txt niters 10
+run_test pagerank runtime bin/example_apps/pagerank file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10
 
-# run_test connectedcomponents runtime bin/example_apps/connectedcomponents file ~/Downloads/soc-LiveJournal1.txt niters 10
+# run_test communitydetection runtime bin/example_apps/communitydetection file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10 execthreads 22
 
-# run_test minimumspanningforest msf-total-runtime bin/example_apps/minimumspanningforest file ~/Downloads/soc-LiveJournal1.txt niters 10
+# run_test connectedcomponents runtime bin/example_apps/connectedcomponents file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10
 
-# run_test als_edgefactors runtime bin/example_apps/matrix_factorization/als_edgefactors file ~/Downloads/netflix.mm niters 10 
+# run_test minimumspanningforest msf-total-runtime bin/example_apps/minimumspanningforest file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10
 
+# run_test als_edgefactors runtime bin/example_apps/matrix_factorization/als_edgefactors file /u/pferro/Downloads/netflix.mm niters 10 
 
-# run_test stronglyconnectedcomponents runtime bin/example_apps/stronglyconnectedcomponents file /localdisk/pferro/Downloads/soc-LiveJournal1.txt niters 10
+# run_test stronglyconnectedcomponents runtime bin/example_apps/stronglyconnectedcomponents file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10
 
 # run_test trianglecounting runtime bin/example_apps/trianglecounting file /localdisk/pferro/Downloads/soc-LiveJournal1.txt niters 10 execthreads 24
 
-run_test sgd runtime toolkits/collaborative_filtering/sgd --training=/u/pferro/Downloads/netflix/netflix_train.txt --validation=/u/pferro/Downloads/netflix/netflix_test.txt --sgd_lambda=1e-4 --sgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --execthreads=22
+# run_test sgd runtime toolkits/collaborative_filtering/sgd --training=/u/pferro/Downloads/netflix/netflix_train.txt --validation=/u/pferro/Downloads/netflix/netflix_test.txt --sgd_lambda=1e-4 --sgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --execthreads=22
 
-run_test biassgd runtime toolkits/collaborative_filtering/biassgd --training=/u/pferro/Downloads/netflix/netflix_train.txt --validation=/u/pferro/Downloads/netflix/netflix_test.txt --biassgd_lambda=1e-4 --biassgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --execthreads=22
+# run_test biassgd runtime toolkits/collaborative_filtering/biassgd --training=/u/pferro/Downloads/netflix/netflix_train.txt --validation=/u/pferro/Downloads/netflix/netflix_test.txt --biassgd_lambda=1e-4 --biassgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --execthreads=22
 
-run_test svdpp runtime toolkits/collaborative_filtering/svdpp --training=/u/pferro/Downloads/netflix/netflix_train.txt --validation=/u/pferro/Downloads/netflix/netflix_test.txt --biassgd_lambda=1e-4 --biassgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --execthreads=22
+# run_test svdpp runtime toolkits/collaborative_filtering/svdpp --training=/u/pferro/Downloads/netflix/netflix_train.txt --validation=/u/pferro/Downloads/netflix/netflix_test.txt --biassgd_lambda=1e-4 --biassgd_gamma=1e-4 --minval=1 --maxval=5 --max_iter=6 --execthreads=22
