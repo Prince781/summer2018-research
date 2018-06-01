@@ -51,7 +51,9 @@ function run_test() {
 
 	cd parsec-3.0
 
-	./env.sh
+	export PATH=$PATH:$(readlink -f bin)
+	export PARSECDIR=$(readlink -f .)
+
 	chown $SUDO_USER $stats
 	chown $SUDO_USER $perf_stats
 	cat <(echo $appname) <(perl -e "printf '-' x ($(wc -m <<< $appname) - 1)") <(echo "") | tee $stats $perf_stats 1>/dev/null
