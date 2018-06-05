@@ -160,8 +160,21 @@ void PS(void) {
       }
   } else { // use an internal schedule
       if (strcmp(schedule, SCHED_COLOCATED) == 0) {
-          for (int t = 0; t < num_threads; ++t) {
-              Schedule(t, threads[t], floor(t / ((double)num_threads / num_sockets)));
+          if (num_threads >= num_cpus) {
+              for (int t = 0; t < num_threads; ++t) {
+                  Schedule(t, threads[t], floor(t / ((double)num_threads / num_sockets)));
+              }
+          } else {
+              /**
+               * We can give each thread its own hardware context.
+               */
+              int t = 0;
+              for (int s = 0; s < num_sockets && t < num_threads; ++s) {
+                  for (int c = 0; c < sockets[s].num_cpus && t < num_threads; ++c) {
+                      Schedule(t, threads[t], s);
+                      ++t;
+                  }
+              }
           }
       } else {  // spread
           for (int t = 0; t < num_threads; ++t) {
