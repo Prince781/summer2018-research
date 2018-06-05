@@ -36,8 +36,8 @@ function run_test() {
 	local stats=`readlink -f stats/${appname}-runtimes.txt`
 	local perf_stats=`readlink -f stats/${appname}-rhm.txt`
 	local task_mapper=`readlink -f ./Task_mapper2`
-	local colocated_sched=`readlink -f colocated.sched`
-	local spread_sched=`readlink -f spread.sched`
+	local colocated_sched='default:colocated' #`readlink -f colocated.sched`
+	local spread_sched='default:spread' #`readlink -f spread.sched`
 	local count=4
 
         if [ ! -e $task_mapper ]; then
@@ -48,15 +48,15 @@ function run_test() {
             mkdir -p $(dirname $stats)
         fi
 
-        if [ ! -e $colocated_sched ]; then
-            echo "$colocated_sched does not exist!"
-            exit 1
-        fi
+        #if [ ! -e $colocated_sched ]; then
+        #    echo "$colocated_sched does not exist!"
+        #    exit 1
+        #fi
 
-        if [ ! -e $spread_sched ]; then
-            echo "$spread_sched does not exist!"
-            exit 1
-        fi
+        #if [ ! -e $spread_sched ]; then
+        #    echo "$spread_sched does not exist!"
+        #    exit 1
+        #fi
 
 	cd parsec-3.0
 
@@ -107,4 +107,4 @@ function run_test() {
 	exit 0
 }
 
-run_test ferret parsecmgmt -a run -p ferret -n 24 -i native
+run_test ferret parsecmgmt -a run -p ferret -n 16 -i native
