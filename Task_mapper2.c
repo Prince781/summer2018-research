@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <assert.h>
 
 #define MAX_THREADS 1024
 
@@ -159,20 +160,13 @@ void PS(void) {
       }
   } else { // use an internal schedule
       if (strcmp(schedule, SCHED_COLOCATED) == 0) {
-          int t = 0;
-          while (t < num_threads) {
-              for (int s = 0; s < num_sockets && t < num_threads; ++s) {
-                  for (int c = 0; c < sockets[s].num_cpus && t < num_threads; ++c) {
-                      Schedule(t, threads[t], s);
-                      ++t;
-                  }
-              }
+          for (int t = 0; t < num_threads; ++t) {
+              assert(t / (num_threads / num_sockets) < 2);
+              Schedule(t, threads[t], t / (num_threads / num_sockets));
           }
       } else {  // spread
-          int t = 0;
-          while (t < num_threads) {
+          for (int t = 0; t < num_threads; ++t) {
               Schedule(t, threads[t], t % num_sockets);
-              ++t;
           }
       }
   }
