@@ -7,7 +7,7 @@ fi
 
 # get_runtime
 function get_runtime() {
-	sed "s/^.*QUERY TIME:\\([0-9.]\\+\\) seconds.*$/\\1/"
+	grep "QUERY TIME" | sed "s/^.*QUERY TIME: \\?\\([0-9.]\\+\\) seconds.*$/\\1/"
 }
 
 # average (list)
@@ -18,6 +18,15 @@ function avg() {
 # stdev (list)
 function stdev() {
 	echo ${@:1} | tr " " "\\n" | awk '{sum+=$1; sumsq+=$1*$1}END{print sqrt(sumsq/NR - (sum/NR)**2)}' 
+}
+
+function cleanup() {
+	if [[ $(pwd) = /u/$(whoami)/* ]] || [[ $(pwd) = /localhost/$(whoami)/* ]]; then
+		find -type f -user root -exec rm -f {} \; .
+		find -type d -user root -exec rm -rf {} \; .
+	else
+		echo "Refusing to destroy contents of non-user directory $PWD"
+	fi
 }
 
 # run_test <appname> <cmd>
@@ -70,7 +79,7 @@ function run_test() {
 		local runtimes=()
 
 		for i in $(seq 1 $count); do
-			tm=$($cmd | get_runtime)
+			tm=$($cmd 2>&1 | get_runtime)
 			runtimes+=($tm)
 			echo "$tm s" >> $stats
 		done
@@ -82,8 +91,7 @@ function run_test() {
 		# count REMOTE_HIT_MODIFIED (r10d3) hardware counter
 		mkfifo ${appname}-pipe
 		cat ${appname}-pipe >> $perf_stats &
-                $cmd & sleep 1
-		perf stat -e r10d3 -a --per-core -o ${appname}-pipe $cmd
+		perf stat -e r10d3 -a --per-core -o ${appname}-pipe $cmd 1>/dev/null
 		rm ${appname}-pipe
 
 		kill -s TERM $child_pid
@@ -92,7 +100,8 @@ function run_test() {
 		echo "...done"
 	done
 
+	cleanup
 	cd ..
 }
 
-run_test ferret parsecmgmt -a run -p ferret -n 2 -i test
+run_test ferret parsecmgmt -a run -p ferret -n 2 -i native
