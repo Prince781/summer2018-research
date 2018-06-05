@@ -1,8 +1,8 @@
 #!/bin/bash
 
 if [ $UID -ne 0 ]; then
-	echo "This script must be run as root."
-	exit 1
+    echo "This script should be run as root."
+    sleep 10
 fi
 
 # get_runtime
@@ -63,10 +63,12 @@ function run_test() {
 	export PATH=$PATH:$(readlink -f bin)
 	export PARSECDIR=$(readlink -f .)
 
-	trap "{ cleanup; rm -f ${appname}-pipe; kill -s TERM \$(pgrep -u root Task_mapper2); }" EXIT SIGINT SIGTERM
+	trap "{ cleanup; rm -f ${appname}-pipe; pkill -u root,pferro -signal TERM Task_mapper2; }" EXIT SIGINT SIGTERM
 
-	chown $SUDO_USER $stats
-	chown $SUDO_USER $perf_stats
+        if [ $UID -eq 0 ]; then
+            chown $SUDO_USER $stats
+            chown $SUDO_USER $perf_stats
+        fi
 	cat <(echo $appname) <(perl -e "printf '-' x ($(wc -m <<< $appname) - 1)") <(echo "") <(echo "Command: $cmd") <(echo "") | tee $stats $perf_stats 1>/dev/null
 
 	schednames=('Colocated' 'Spread')
@@ -89,12 +91,16 @@ function run_test() {
 		echo "" >> $stats
 		echo "`avg ${runtimes[@]}` s (avg) +/- `stdev ${runtimes[@]}`" >> $stats
 		echo "" >> $stats
-
-		# count REMOTE_HIT_MODIFIED (r10d3) hardware counter
-		mkfifo ${appname}-pipe
-		cat ${appname}-pipe >> $perf_stats &
-		perf stat -e r10d3 -a --per-core -o ${appname}-pipe $cmd 1>/dev/null
-		rm ${appname}-pipe
+                
+                if [ $UID -eq 0 ]; then
+                    # count REMOTE_HIT_MODIFIED (r10d3) hardware counter
+                    mkfifo ${appname}-pipe
+                    cat ${appname}-pipe >> $perf_stats &
+                    perf stat -e r10d3 -a --per-core -o ${appname}-pipe $cmd 1>/dev/null
+                    rm ${appname}-pipe
+                else
+                    echo "Warning: Skipping REMOTE_HIT_MODIFIED test because we lack permissions to run perf-stat"
+                fi
 
 		kill -s TERM $child_pid
 		echo "Waiting for process $child_pid to terminate..."
