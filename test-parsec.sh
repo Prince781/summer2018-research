@@ -63,9 +63,11 @@ function run_test() {
 	export PATH=$PATH:$(readlink -f bin)
 	export PARSECDIR=$(readlink -f .)
 
+	trap "{ cleanup; rm -f ${appname}-pipe; kill -s TERM \$(pgrep -u root Task_mapper2); }" EXIT SIGINT SIGTERM
+
 	chown $SUDO_USER $stats
 	chown $SUDO_USER $perf_stats
-	cat <(echo $appname) <(perl -e "printf '-' x ($(wc -m <<< $appname) - 1)") <(echo "") | tee $stats $perf_stats 1>/dev/null
+	cat <(echo $appname) <(perl -e "printf '-' x ($(wc -m <<< $appname) - 1)") <(echo "") <(echo "Command: $cmd") <(echo "") | tee $stats $perf_stats 1>/dev/null
 
 	schednames=('Colocated' 'Spread')
 	schedules=($colocated_sched $spread_sched)
@@ -100,8 +102,9 @@ function run_test() {
 		echo "...done"
 	done
 
-	cleanup
 	cd ..
+
+	exit 0
 }
 
-run_test ferret parsecmgmt -a run -p ferret -n 2 -i native
+run_test ferret parsecmgmt -a run -p ferret -n 24 -i native
