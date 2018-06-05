@@ -56,7 +56,7 @@ int compare_tids(const void *arg1, const void *arg2) {
   return *(pid_t *)arg1 - *(pid_t *)arg2;
 }
 
-void Schedule(pid_t tid, int sock_id);
+void Schedule(int tnum, pid_t tid, int sock_id);
 
 // Added latest to check already running threads  on CPUs
 void PS(void) {
@@ -155,8 +155,7 @@ void PS(void) {
 
   if (strncmp(schedule, SCHED_DEFAULT_PREFIX, strlen(SCHED_DEFAULT_PREFIX)) != 0) {
       for (int t = 0; t < num_threads; ++t) {
-        printf("scheduling thread #%d\n", t);
-        Schedule(threads[t], thread_to_socket[t]);
+        Schedule(t, threads[t], thread_to_socket[t]);
       }
   } else { // use an internal schedule
       if (strcmp(schedule, SCHED_COLOCATED) == 0) {
@@ -164,7 +163,7 @@ void PS(void) {
           while (t < num_threads) {
               for (int s = 0; s < num_sockets && t < num_threads; ++s) {
                   for (int c = 0; c < sockets[s].num_cpus && t < num_threads; ++c) {
-                      Schedule(threads[t], s);
+                      Schedule(t, threads[t], s);
                       ++t;
                   }
               }
@@ -172,7 +171,7 @@ void PS(void) {
       } else {  // spread
           int t = 0;
           while (t < num_threads) {
-              Schedule(threads[t], t % num_sockets);
+              Schedule(t, threads[t], t % num_sockets);
               ++t;
           }
       }
@@ -188,13 +187,13 @@ void PS(void) {
   }
 } // function close
 
-void Schedule(pid_t tid, int sock_id) {
+void Schedule(int tnum, pid_t tid, int sock_id) {
   int cpu = sockets[sock_id].cpus[sockets[sock_id].cpu];
   cpu_set_t set;
   CPU_ZERO(&set);
   CPU_SET(cpu, &set);
   if (sched_setaffinity(tid, sizeof set, &set) != -1) {
-    printf("Set TID:%d to CPU:%d on socket %d\n", tid, cpu, sock_id);
+    printf("Set #%d TID:%d to CPU:%d on socket %d\n", tnum, tid, cpu, sock_id);
     sockets[sock_id].cpu =
         (sockets[sock_id].cpu + 1) % sockets[sock_id].num_cpus;
   } else {
