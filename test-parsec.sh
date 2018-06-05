@@ -43,7 +43,7 @@ function run_test() {
 	local count=4
 
         if [ ! -e $task_mapper ]; then
-            make CFLAGS=-std=gnu99 Task_mapper2
+            make CFLAGS=-std=gnu99 LDFLAGS=-lm Task_mapper2
         fi
 
         if [ ! -e $(dirname $stats) ]; then
