@@ -24,7 +24,7 @@ function stdev() {
 # cleanup $dir
 function cleanup() {
         local cdir=$1
-	if [[ $cdir = /u/$(whoami)/* ]] || [[ $(pwd) = /localhost/$(whoami)/* ]]; then
+	if [[ $cdir = /u/${SUDO_USER}/* ]] || [[ $cdir = /localdisk/${SUDO_USER}/* ]]; then
 		find $cdir -type f -user root -exec rm -f {} \;
 		find $cdir -type d -user root -exec rm -rf {} \;
 	else
@@ -116,7 +116,7 @@ function run_test() {
 	exit 0
 }
 
-run_test pagerank runtime bin/example_apps/pagerank file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10
+# run_test pagerank runtime bin/example_apps/pagerank file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10
 
 # run_test communitydetection runtime bin/example_apps/communitydetection file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10 execthreads 22
 

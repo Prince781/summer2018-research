@@ -23,7 +23,7 @@ function stdev() {
 # cleanup $dir
 function cleanup() {
         local cdir=$1
-	if [[ $cdir = /u/$(whoami)/* ]] || [[ $(pwd) = /localhost/$(whoami)/* ]]; then
+	if [[ $cdir = /u/${SUDO_USER}/* ]] || [[ $cdir = /localdisk/${SUDO_USER}/* ]]; then
 		find $cdir -type f -user root -exec rm -f {} \;
 		find $cdir -type d -user root -exec rm -rf {} \;
 	else
@@ -115,4 +115,5 @@ function run_test() {
 	exit 0
 }
 
-run_test ferret parsecmgmt -a run -p ferret -n 16 -i native
+# run_test ferret parsecmgmt -a run -p ferret -n 24 -i native
+run_test x264 parsecmgmt -a run -p x264 -n 24 -i native
