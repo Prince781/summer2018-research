@@ -2,7 +2,7 @@
 
 if [ $UID -ne 0 ]; then
     echo "This script should be run as root."
-    sleep 10
+    sleep 1
 fi
 
 # get_runtime
@@ -20,12 +20,14 @@ function stdev() {
 	echo ${@:1} | tr " " "\\n" | awk '{sum+=$1; sumsq+=$1*$1}END{print sqrt(sumsq/NR - (sum/NR)**2)}' 
 }
 
+# cleanup $dir
 function cleanup() {
-	if [[ $(pwd) = /u/$(whoami)/* ]] || [[ $(pwd) = /localhost/$(whoami)/* ]]; then
-		find -type f -user root -exec rm -f {} \; .
-		find -type d -user root -exec rm -rf {} \; .
+        local cdir=$1
+	if [[ $cdir = /u/$(whoami)/* ]] || [[ $(pwd) = /localhost/$(whoami)/* ]]; then
+		find $cdir -type f -user root -exec rm -f {} \;
+		find $cdir -type d -user root -exec rm -rf {} \;
 	else
-		echo "Refusing to destroy contents of non-user directory $PWD"
+		echo "Refusing to destroy contents of non-user directory $cdir"
 	fi
 }
 
@@ -63,7 +65,7 @@ function run_test() {
 	export PATH=$PATH:$(readlink -f bin)
 	export PARSECDIR=$(readlink -f .)
 
-	trap "{ cleanup; rm -f ${appname}-pipe; pkill -u root,pferro -signal TERM Task_mapper2; }" EXIT SIGINT SIGTERM
+	trap "{ cleanup $PARSECDIR; rm -f ${appname}-pipe; pkill -u root,pferro --signal TERM Task_mapper2; exit 0; }" EXIT SIGINT SIGTERM
 
         if [ $UID -eq 0 ]; then
             chown $SUDO_USER $stats
