@@ -17,6 +17,12 @@
 
 #define MAX_THREADS 1024
 
+#define SCHED_DEFAULT_PREFIX    "default:"
+
+#define SCHED_COLOCATED		SCHED_DEFAULT_PREFIX"colocated"
+
+#define SCHED_SPREAD		SCHED_DEFAULT_PREFIX"spread"
+
 struct cpu_socket {
   int cpus[MAX_THREADS]; // thread number (on this socket) -> CPU number
   int num_cpus;          // = num_cores * threads_per_core
@@ -146,9 +152,30 @@ void PS(void) {
   pclose(fp);
 
   qsort(threads, num_threads, sizeof threads[0], &compare_tids);
-  for (int t = 0; t < num_threads; ++t) {
-    printf("scheduling thread #%d\n", t);
-    Schedule(threads[t], thread_to_socket[t]);
+
+  if (strncmp(schedule, SCHED_DEFAULT_PREFIX, strlen(SCHED_DEFAULT_PREFIX)) != 0) {
+      for (int t = 0; t < num_threads; ++t) {
+        printf("scheduling thread #%d\n", t);
+        Schedule(threads[t], thread_to_socket[t]);
+      }
+  } else { // use an internal schedule
+      if (strcmp(schedule, SCHED_COLOCATED) == 0) {
+          int t = 0;
+          while (t < num_threads) {
+              for (int s = 0; s < num_sockets && t < num_threads; ++s) {
+                  for (int c = 0; c < sockets[s].num_cpus && t < num_threads; ++c) {
+                      Schedule(threads[t], s);
+                      ++t;
+                  }
+              }
+          }
+      } else {  // spread
+          int t = 0;
+          while (t < num_threads) {
+              Schedule(threads[t], t % num_sockets);
+              ++t;
+          }
+      }
   }
 
   for (int s = 0; s < num_sockets; ++s) {
@@ -222,6 +249,18 @@ void init_CPUs(void) {
 
 bool init_schedule(void) {
   FILE *fp;
+  
+  if (strncmp(schedule, SCHED_DEFAULT_PREFIX, strlen(SCHED_DEFAULT_PREFIX)) == 0) {
+    if (strcmp(schedule, SCHED_COLOCATED) == 0
+        || strcmp(schedule, SCHED_SPREAD) == 0)
+        return true;
+    else {
+        fprintf(stderr, "Unknown internal schedule '%s'. Options are '%s' and '%s'.\n",
+                strchr(schedule, ':') + 1, strchr(SCHED_COLOCATED, ':') + 1,
+                strchr(SCHED_SPREAD, ':') + 1);
+        return false;
+    }
+  }
 
   bool ret = true;
   int lineno = 1;
@@ -275,6 +314,11 @@ int main(int argc, char *argv[]) {
 
   init_CPUs();
 
+  if (!init_schedule()) {
+    fprintf(stderr, "There was a problem with the schedule. Aborting\n");
+    return 1;
+  }
+
   printf("Topology: %d threads across %d sockets:\n", num_cpus, num_sockets);
   for (int i = 0; i < num_sockets; ++i) {
     printf(" socket %d has threads:", i);
@@ -283,10 +327,6 @@ int main(int argc, char *argv[]) {
     printf("\n");
   }
 
-  if (!init_schedule()) {
-    fprintf(stderr, "There was a problem with the schedule. Aborting\n");
-    return 1;
-  }
 
   while (1) {
     PS();
