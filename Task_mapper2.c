@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <math.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 #define MAX_THREADS 1024
 
@@ -59,11 +61,25 @@ int compare_tids(const void *arg1, const void *arg2) {
 
 void Schedule(int tnum, pid_t tid, int sock_id);
 
+const char *get_username(void) {
+    char *uname;
+
+    if ((uname = getlogin()))
+        return uname;
+    else {
+        struct passwd *pwd = getpwuid(geteuid());
+        if (pwd)
+            uname = pwd->pw_name;
+    }
+
+    return uname;
+}
+
 // Added latest to check already running threads  on CPUs
 void PS(void) {
   char cmd[1024];
 
-  snprintf(cmd, sizeof cmd, "ps -T -u %s,root", getlogin());
+  snprintf(cmd, sizeof cmd, "ps -T -u %s,root", get_username());
   // read PS_OUT to get information about current running processes
   FILE *fp = popen(cmd, "r");
   char g;
