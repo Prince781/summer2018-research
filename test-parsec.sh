@@ -10,6 +10,10 @@ function get_runtime() {
 	grep "QUERY TIME" | sed "s/^.*QUERY TIME: \\?\\([0-9.]\\+\\) seconds.*$/\\1/"
 }
 
+function get_runtime2() {
+    grep "real" | sed "s/^.*real.*\\([[:digit:]]\\+\\)m\\([0-9.]\\+\\).*$/\\1\t\\2/" | awk '{ printf "%f", $1 * 60 + $2 }'
+}
+
 # average (list)
 function avg() {
 	echo ${@:1} | tr " " "\\n" | awk '{sum+=$1}END{print (sum/NR)}'
@@ -31,10 +35,11 @@ function cleanup() {
 	fi
 }
 
-# run_test <appname> <cmd>
+# run_test <appname> <runtime-f> <cmd>
 function run_test() {
 	local appname=$1
-	local cmd=${@:2}
+        local runtime_f=$2
+	local cmd=${@:3}
 	local stats=`readlink -f stats/${appname}-runtimes.txt`
 	local perf_stats=`readlink -f stats/${appname}-rhm.txt`
 	local task_mapper=`readlink -f ./Task_mapper2`
@@ -85,7 +90,7 @@ function run_test() {
 		local runtimes=()
 
 		for i in $(seq 1 $count); do
-			tm=$($cmd 2>&1 | get_runtime)
+			tm=$($cmd | $runtime_f)
 			runtimes+=($tm)
 			echo "$tm s" >> $stats
 		done
@@ -115,5 +120,5 @@ function run_test() {
 	exit 0
 }
 
-# run_test ferret parsecmgmt -a run -p ferret -n 24 -i native
-run_test x264 parsecmgmt -a run -p x264 -n 24 -i native
+# run_test ferret get_runtime parsecmgmt -a run -p ferret -n 24 -i native
+run_test x264 get_runtime2 parsecmgmt -a run -p x264 -n 24 -i native
