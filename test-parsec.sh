@@ -70,7 +70,7 @@ function run_test() {
 	export PATH=$PATH:$(readlink -f bin)
 	export PARSECDIR=$(readlink -f .)
 
-	trap "{ cleanup $PARSECDIR; rm -f ${appname}-pipe; pkill -u root,pferro --signal TERM Task_mapper2; exit 0; }" EXIT SIGINT SIGTERM
+	trap "{ cleanup $PARSECDIR; rm -f ${appname}-pipe; pkill -u root,pferro --signal TERM Task_mapper2; }" EXIT SIGINT SIGTERM
 
         if [ $UID -eq 0 ]; then
             chown $SUDO_USER $stats
@@ -116,8 +116,6 @@ function run_test() {
 	done
 
 	cd ..
-
-	exit 0
 }
 
 # run_test ferret get_runtime parsecmgmt -a run -p ferret -n 24 -i native

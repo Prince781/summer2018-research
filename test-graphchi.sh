@@ -65,7 +65,7 @@ function run_test() {
 	cd graphchi-cpp
 
         export GRAPHCHI_DIR=$(pwd)
-	trap "{ cleanup $GRAPHCHI_DIR; rm -f ${appname}-pipe; pkill -u root,pferro --signal TERM Task_mapper2; exit 0; }" EXIT SIGINT SIGTERM
+	trap "{ cleanup $GRAPHCHI_DIR; rm -f ${appname}-pipe; pkill -u root,pferro --signal TERM Task_mapper2; }" EXIT SIGINT SIGTERM
 
         if [ $UID -eq 0 ]; then
             chown $SUDO_USER $stats
@@ -112,8 +112,6 @@ function run_test() {
 	done
 
 	cd ..
-
-	exit 0
 }
 
 # run_test pagerank runtime bin/example_apps/pagerank file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10
