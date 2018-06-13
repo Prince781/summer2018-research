@@ -414,7 +414,7 @@ int main(int argc, char *argv[]) {
 
   printf("Topology: %d hardware contexts across %d sockets:\n", num_cpus, num_sockets);
   for (int i = 0; i < num_sockets; ++i) {
-    printf(" socket %d has contexts: ", i);
+    printf(" socket %d has %d cores: ", i, sockets[i].size);
     for (int j = 0; j < sockets[i].size; ++j) {
         printf("[");
         for (int k = 0; k < sockets[i].cores[j].size; ++k)
