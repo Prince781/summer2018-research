@@ -44,6 +44,7 @@ function run_test() {
 	local perf_stats=`readlink -f stats/${appname}-rhm.txt`
 	local task_mapper=`readlink -f ./Task_mapper2`
 	local colocated_sched='default:colocated' #`readlink -f colocated.sched`
+        local colocated2_sched='default:colocated2'
 	local spread_sched='default:spread' #`readlink -f spread.sched`
 	local count=4
 
@@ -78,8 +79,8 @@ function run_test() {
         fi
 	cat <(echo $appname) <(perl -e "printf '-' x ($(wc -m <<< $appname) - 1)") <(echo "") <(echo "Command: $cmd") <(echo "") | tee $stats $perf_stats 1>/dev/null
 
-	schednames=('Colocated' 'Spread')
-	schedules=($colocated_sched $spread_sched)
+	schednames=('Colocated' 'Colocated2' 'Spread')
+	schedules=($colocated_sched $colocated2_sched $spread_sched)
 
 	# try with colocated.sched
 	for s in $(seq 0 $((${#schednames[@]}-1))); do
@@ -118,5 +119,5 @@ function run_test() {
 	cd ..
 }
 
-# run_test ferret get_runtime parsecmgmt -a run -p ferret -n 24 -i native
-run_test x264 get_runtime2 parsecmgmt -a run -p x264 -n 24 -i native
+run_test ferret get_runtime parsecmgmt -a run -p ferret -n 2 -i native
+# run_test x264 get_runtime2 parsecmgmt -a run -p x264 -n 24 -i native
