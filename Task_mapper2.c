@@ -351,7 +351,10 @@ bool init_schedule(void) {
     for (int i = 0; i < N_DEFAULT_SCHEDULES; ++i)
         if (strcmp(schedule, sched_names[i]) == 0)
             return true;
-    fprintf(stderr, "Unknown internal schedule '%s'.\n", schedule);
+    fprintf(stderr, "Unknown internal schedule '%s'. Options are: ", schedule);
+    for (int i = 0; i < N_DEFAULT_SCHEDULES; ++i)
+        fprintf(stderr, "'%s'%s", sched_names[i], i == N_DEFAULT_SCHEDULES-1 ? "" : ", ");
+    fprintf(stderr, "\n");
     return false;
   }
 
