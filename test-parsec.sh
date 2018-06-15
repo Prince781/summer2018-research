@@ -104,10 +104,10 @@ function run_test() {
                     # count REMOTE_HIT_MODIFIED (r10d3) hardware counter
                     mkfifo ${appname}-pipe
                     cat ${appname}-pipe >> $perf_stats &
-                    perf stat -e r10d3 -a --per-core -o ${appname}-pipe $cmd 1>/dev/null
+                    perf stat -e r10d3 -e r412e -a --per-core -o ${appname}-pipe $cmd 1>/dev/null
                     rm ${appname}-pipe
                 else
-                    echo "Warning: Skipping REMOTE_HIT_MODIFIED test because we lack permissions to run perf-stat"
+                    echo "Warning: Skipping REMOTE_HIT_MODIFIED and LLC_MISSES tests because we lack permissions to run perf-stat"
                 fi
 
 		kill -s TERM $child_pid
@@ -119,5 +119,5 @@ function run_test() {
 	cd ..
 }
 
-run_test ferret get_runtime parsecmgmt -a run -p ferret -n 2 -i native
+run_test ferret get_runtime parsecmgmt -a run -p ferret -n 1 -i native
 # run_test x264 get_runtime2 parsecmgmt -a run -p x264 -n 24 -i native
