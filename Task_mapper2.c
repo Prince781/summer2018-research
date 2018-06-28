@@ -31,6 +31,7 @@
 enum sched_policy {
     SCHED_COLOCATED,
     SCHED_COLOCATED_HYPERTHREADS,
+    SCHED_COLOCATED_SOCKETS,
     SCHED_SPREAD,
     N_DEFAULT_SCHEDULES, 
 };
@@ -38,6 +39,7 @@ enum sched_policy {
 const char *sched_names[] = {
     [SCHED_COLOCATED] = SCHED_DEFAULT_PREFIX"colocated",
     [SCHED_COLOCATED_HYPERTHREADS] = SCHED_DEFAULT_PREFIX"colocated2",
+    [SCHED_COLOCATED_SOCKETS] = SCHED_DEFAULT_PREFIX"colocated3",
     [SCHED_SPREAD] = SCHED_DEFAULT_PREFIX"spread"
 };
 
@@ -228,13 +230,27 @@ void PS(void) {
           for (int t = 0; t < num_threads; ++t) {
               Schedule(t, threads[t], t % num_sockets, -1, -1);
           }
-      } else {  // colocated onto cores first before hyperthreads
+      } else if (strcmp(schedule, sched_names[SCHED_COLOCATED_HYPERTHREADS]) == 0) {
+          // colocated onto cores first before hyperthreads
           int t = 0;
           while (t < num_threads) {
               for (int s = 0; s < num_sockets && t < num_threads; ++s) {
                   for (int c = 0; c < sockets[s].size && t < num_threads; ++c) {
                       Schedule(t, threads[t], s, c, -1);
                       ++t;
+                  }
+              }
+          }
+      } else {
+          // colocated onto all contexts on a socket
+          int t = 0;
+          while (t < num_threads) {
+              for (int s = 0; s < num_sockets && t < num_threads; ++s) {
+                  for (int c = 0; c < sockets[s].size && t < num_threads; ++c) {
+                      for (int h = 0; h < sockets[s].cores[c].size && t < num_threads; ++ h) {
+                          Schedule(t, threads[t], s, c, h);
+                          ++t;
+                      }
                   }
               }
           }
