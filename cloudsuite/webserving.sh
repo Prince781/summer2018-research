@@ -59,21 +59,18 @@ cleanup() {
 
 trap "{ cleanup; exit; }" EXIT TERM QUIT INT
 
-device=wlp6s0       # change this depending on the hardware on your system
+device=lo # change this depending on the hardware on your system
 ip_info=$(ip addr show dev ${device} | grep 'inet ')
 
 if [ "$?" -ne "0" ]; then
     exit 1
 fi
 
-WEB_SERVER_IP=$(echo $ip_info | grep 'inet ' | awk '{print $2}' \
-    | sed 's/\(\([[:digit:]]\{1,3\}\.\)\{3\}[[:digit:]]\{1,3\}\)\(\/.*\)\?/\1/g')
+WEB_SERVER_IP=127.0.0.1
 DATABASE_SERVER_IP=127.0.0.1
 MEMCACHED_SERVER_IP=127.0.0.1
 MAX_PM_CHILDREN=80          # default = 80
 LOAD_SCALE=7                # default = 7
-
-echo "Web server IP is $WEB_SERVER_IP"
 
 echo "Starting server containers..."
 containers+=( $(docker run -dt --net=host --name=mysql_server cloudsuite/web-serving:db_server ${WEB_SERVER_IP}) )
@@ -96,6 +93,10 @@ if [ "$?" -ne "0" ]; then
 fi
 
 echo "... done."
+
+# Needed to allow the servers to start.
+echo "Sleeping for a bit ..."
+sleep 5
 
 echo "Running client ..."
 containers+=(faban_client)
