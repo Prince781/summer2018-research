@@ -1,10 +1,5 @@
 #!/bin/bash
 
-if [ $UID -ne 0 ]; then
-    echo "This script should be run as root."
-    sleep 1
-fi
-
 # get_runtime <param>
 function get_runtime() {
 	local param=$1
@@ -37,8 +32,8 @@ function run_test() {
 	local appname=$1
         local runtime_param=$2
 	local cmd=${@:3}
-	local stats=`readlink -f stats/${appname}-runtimes.txt`
-	local count=4
+	local stats=`readlink -fm stats/samd/graphchi/${appname}-runtimes.txt`
+	local count=8
 
         if [ ! -e $(dirname $stats) ]; then
             mkdir -p $(dirname $stats)
@@ -51,6 +46,7 @@ function run_test() {
 
         if [ $UID -eq 0 ]; then
             chown $SUDO_USER $stats
+            chgrp $SUDO_GROUP $stats
         fi
 	cat <(echo $appname) <(perl -e "printf '-' x ($(wc -m <<< $appname) - 1)") <(echo "") <(echo "Command: $cmd") <(echo "") > $stats
 
@@ -59,13 +55,13 @@ function run_test() {
             ["Without samd"]="" )
 
 	# try with colocated.sched
-	for s in ${!schedules[@]}; do
+	for s in "${!schedules[@]}"; do
 		echo $s: >> $stats
                 local actual_cmd=(${schedules[$s]} $cmd)
 		local runtimes=()
 
-		for i in {1..$count}; do
-                        echo edgelist | $actual_cmd
+                for i in $(seq 1 $count); do
+                        echo edgelist | ${actual_cmd[@]}
 			tm=$(get_runtime $runtime_param)
 			runtimes+=($tm)
 			echo "$tm s" >> $stats
