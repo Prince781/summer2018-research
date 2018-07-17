@@ -26,14 +26,17 @@ function stdev() {
 
 # cleanup $dir
 function cleanup() {
-        local cdir=$1
-	if [[ $cdir = /u/${SUDO_USER}/* ]] || [[ $cdir = /localdisk/${SUDO_USER}/* ]]; then
-		find $cdir -type f -user root -exec rm -f {} \;
-		find $cdir -type d -user root -exec rm -rf {} \;
-	else
-		echo "Refusing to destroy contents of non-user directory $cdir"
-	fi
+#        local cdir=$1
+#	if [[ $cdir = /u/${SUDO_USER}/* ]] || [[ $cdir = /localdisk/${SUDO_USER}/* ]]; then
+#		find $cdir -type f -user root -exec rm -f {} \;
+#		find $cdir -type d -user root -exec rm -rf {} \;
+#	else
+#		echo "Refusing to destroy contents of non-user directory $cdir"
+#	fi
+    return 0
 }
+
+curdir=$(pwd)
 
 # run_test <test name> <appname> <nthreads> <runtime-f> <schedules>
 function run_test() {
@@ -51,20 +54,21 @@ function run_test() {
             mkdir -p $(dirname $stats)
         fi
 
-	cd parsec-3.0
+        echo "[${testname}] Running ${appname} with ${nthreads} thread(s) ..."
+
+	cd $curdir/parsec-3.0
 
 	export PATH=$PATH:$(readlink -f bin)
 	export PARSECDIR=$(readlink -f .)
 
 	trap "{ cleanup $PARSECDIR; rm -f ${appname}-pipe; pkill -u root,pferro --signal TERM taskset; exit; }" EXIT SIGINT SIGTERM
 
+        # truncate the statistics files
+        cat <(hostname) <(echo $appname) <(perl -e "printf '-' x ($(wc -m <<< $appname) - 1)") <(echo "") <(echo "Command: $cmd") <(echo "") | tee $stats $perf_stats 1>/dev/null
         if [ $UID -eq 0 ]; then
             chown $SUDO_USER $stats
             chown $SUDO_USER $perf_stats
         fi
-
-        # truncate the statistics files
-        cat <(hostname) <(echo $appname) <(perl -e "printf '-' x ($(wc -m <<< $appname) - 1)") <(echo "") <(echo "Command: $cmd") <(echo "") | tee $stats $perf_stats 1>/dev/null
 
 	# schedules=('0,2,4,6,8,10' '0,12,2,14,4,16' '0,2,4,1,3,5')
         local schedules=(${@:5})
@@ -75,8 +79,8 @@ function run_test() {
                 echo "cpuset=${schedules[$s]}:" >> $perf_stats
 		local runtimes=()
 
-		for i in $(seq 1 $count); do
-			tm=$(taskset -c ${schedules[$s]} $cmd | $runtime_f)
+		for j in $(seq 1 $count); do
+			tm=$(LIBC_FATAL_STDERR_=1 taskset -c ${schedules[$s]} $cmd 2>/dev/null | $runtime_f)
 			runtimes+=($tm)
 			echo "$tm s" >> $stats
 		done
@@ -89,10 +93,11 @@ function run_test() {
                 
                 if [ $UID -eq 0 ]; then
                     # count REMOTE_HIT_MODIFIED (r10d3) hardware counter
+                    echo "Measuring performance counters ..."
                     mkfifo ${appname}-pipe
                     cat ${appname}-pipe >> $perf_stats &
                     child_pids+=($!)
-                    perf stat -e r10d3 -e r412e -a --per-core -o ${appname}-pipe taskset -c ${schedules[$s]} $cmd 1>/dev/null
+                    LIBC_FATAL_STDERR_=1 perf stat -e r10d3 -e r412e -a --per-core --per-socket -o ${appname}-pipe taskset -c ${schedules[$s]} $cmd 1>/dev/null
                     rm ${appname}-pipe
                 else
                     echo "Warning: Skipping REMOTE_HIT_MODIFIED and LLC_MISSES tests because we lack permissions to run perf-stat"
@@ -106,18 +111,19 @@ function run_test() {
                 fi
 	done
 
-	cd ..
+	cd $curdir
 }
 
 # test on one core
-#for i in {1,2,16,24}; do
-#    run_test serial ferret $i get_runtime 0
-#    run_test serial x264 $i get_runtime2 0 
-#done
-
-# test on multiple cores
-for i in {1,2,4,14,16,24}; do
-    run_test parallel ferret $i get_runtime 0,2,4,6,8,10 0,12,2,14,4,16 0,2,4,1,3,5
-#    run_test parallel x264 $i get_runtime2 0,2,4,6,8,10 0,12,2,14,4,16 0,2,4,1,3,5
+for i in {1..24}; do
+    run_test serial x264 $i get_runtime2 0 
+    run_test serial ferret $i get_runtime 0
 done
 
+# test on multiple cores
+for i in {1..24}; do
+    run_test parallel ferret $i get_runtime 0,2,4,6,8,10 0,12,2,14,4,16 0,2,4,1,3,5
+    run_test parallel x264 $i get_runtime2 0,2,4,6,8,10 0,12,2,14,4,16 0,2,4,1,3,5
+done
+
+echo "All tests completed"
