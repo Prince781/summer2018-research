@@ -1,5 +1,7 @@
 #!/bin/bash
 
+pids=()
+
 commands=()
 
 commands+=("runtime bin/example_apps/pagerank file /u/pferro/Downloads/soc-LiveJournal1.txt niters 10")
@@ -32,6 +34,15 @@ function stdev() {
 
 # cleanup $dir
 function cleanup() {
+    if (( ${#pids} > 0 )); then
+        echo "There are these running processes: ${pids[@]}"
+        kill -s TERM ${pids[@]}
+        echo "Waiting for 5 seconds"
+        sleep 5
+        kill -9 ${pids[@]}
+        wait ${pids[@]}
+    fi
+
     local cdir=$1
     if [[ $cdir = /u/${SUDO_USER}/* ]] || [[ $cdir = /localdisk/${SUDO_USER}/* ]]; then
         find $cdir -type f -user root -exec rm -f {} \;
@@ -78,12 +89,13 @@ function run_tests() {
     fi
 
     for prefix in {sam-launch,}; do
-        local pids=()
+        pids=()
         for cmd in "${commands[@]}"; do
+            cmd=($cmd)  # convert to array
             local runtime_param=${cmd[1]}
-            local appname=`basename ${cmd[2]}`
+            local appname=`basename $runtime_param`
             local stats=`readlink -fm stats/samd/graphchi/${prefix}/${appname}-runtimes.txt`
-            local actual_cmd=($prefix ${cmd:1})
+            local actual_cmd=($prefix ${cmd[@]:1})
 
             if [ ! -e $(dirname $stats) ]; then
                 mkdir -p $(dirname $stats)
@@ -99,6 +111,7 @@ function run_tests() {
             echo "Running experimental test '$prefix'"
         fi
         wait ${pids[@]}
+        pids=()
     done
 
     cd ..
