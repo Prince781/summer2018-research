@@ -52,16 +52,17 @@ function cleanup() {
     fi
 }
 
-# test_cmd <stats> <runtime_param> <actual_cmd> ...
+# test_cmd <stats> <errs> <runtime_param> <actual_cmd> ...
 function test_cmd() {
     local stats=$1
-    local runtime_param=$2
-    local actual_cmd=${@:3}
+    local errs=$2
+    local runtime_param=$3
+    local actual_cmd=${@:4}
     local runtimes=()
     local count=1
 
     for i in $(seq 1 $count); do
-        echo edgelist | ${actual_cmd[@]}
+        echo edgelist | ${actual_cmd[@]} 2>$errs
         tm=$(get_runtime $runtime_param)
         runtimes+=($tm)
         echo "$tm s" >> $stats
@@ -74,6 +75,15 @@ function test_cmd() {
 
 # run_tests
 function run_tests() {
+    sam_launch=./sam-launch
+
+    if [ ! -e $sam_launch ]; then
+        echo "Could not find $sam_launch. Create a symlink."
+        exit 1
+    else
+        sam_launch=`readlink -fm $sam_launch`
+    fi
+
     cd graphchi-cpp
 
     if (( $? )); then
@@ -88,13 +98,15 @@ function run_tests() {
         chgrp $SUDO_GROUP $stats
     fi
 
-    for prefix in {sam-launch,}; do
+    for prefix in {$sam_launch,}; do
         pids=()
         for cmd in "${commands[@]}"; do
             cmd=($cmd)  # convert to array
             local runtime_param=${cmd[1]}
             local appname=`basename $runtime_param`
-            local stats=`readlink -fm stats/samd/graphchi/${prefix}/${appname}-runtimes.txt`
+            local dir_prefix=`readlink -fm stats/samd/graphchi/$(basename ${prefix})/`
+            local stats=$dir_prefix/${appname}-runtimes.txt
+            local errs=$dir_prefix/${appname}-errors.txt
             local actual_cmd=($prefix ${cmd[@]:1})
 
             if [ ! -e $(dirname $stats) ]; then
@@ -102,13 +114,13 @@ function run_tests() {
             fi
 
             cat <(echo $appname) <(perl -e "printf '-' x ($(wc -m <<< $appname) - 1)") <(echo "") <(echo "Command: $cmd") <(echo "") > $stats
-            test_cmd $stats $runtime_param ${actual_cmd[@]} &>/dev/null &
+            test_cmd $stats $errs $runtime_param ${actual_cmd[@]} &>/dev/null &
             pids+=($!)
         done
         if [ -z $prefix ]; then
             echo "Running control test"
         else
-            echo "Running experimental test '$prefix'"
+            echo "Running experimental test '`basename $prefix`'"
         fi
         wait ${pids[@]}
         pids=()
