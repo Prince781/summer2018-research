@@ -34,7 +34,7 @@ cleanup() {
 trap "{ cleanup; exit; }" EXIT TERM QUIT INT
 
 frac_server=0.8 # portion of available memory 
-total_mem_mb=$(cat /proc/meminfo | head -n3 | tail -n1 | awk '{print $2/1024}') # MemAvailable MB
+total_mem_mb=$(grep MemAvailable /proc/meminfo | awk '{print $2/1024}') # MemAvailable MB
 N_SERVERS=4
 server_mem_mb=$(echo "scale=2;($frac_server * $total_mem_mb) / $N_SERVERS" | bc -l)
 server_names=   # used for docker_servers.txt
@@ -68,7 +68,7 @@ for server in ${server_names[@]}; do echo \"\$server, 11211\" >> docker_servers.
 echo \"Scaling Twitter dataset ...\";
 ./loader -a ../twitter_dataset/twitter_dataset_unscaled \
 -o ../twitter_dataset/twitter_dataset_${scaling_factor}x -s docker_servers.txt -w `nproc` \
--S 4 -D $server_mem_mb -j -T 1;
+-S ${scaling_factor} -D $server_mem_mb -j -T 1;
 echo \"Running the benchmark with maximum throughput ...\";
 ./loader -a ../twitter_dataset/twitter_dataset_${scaling_factor}x \
 -s docker_servers.txt -g 0.8 -T 1 -c 200 -w 8 | tee ./memcached-nservers-${N_SERVERS}-mem-${server_mem_mb}-MB.log
@@ -84,6 +84,7 @@ echo "cmds: $cmds"
 
 echo "Running dc-client ..."
 docker run -it --name dc-client \
+-v $(pwd)/memcached-logs:/usr/src/memcached/memcached_client\
 --net caching_network cloudsuite/data-caching:client bash -c "$cmds"
 echo "...done."
 
