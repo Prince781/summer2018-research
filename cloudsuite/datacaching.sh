@@ -33,7 +33,7 @@ cleanup() {
 
 trap "{ cleanup; exit; }" EXIT TERM QUIT INT
 
-frac_server=0.7 # portion of total memory 
+frac_server=0.5 # portion of total memory 
 total_mem_mb=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}')
 used_mem_mb=$(echo "scale=2;$frac_server * $total_mem_mb" | bc -l)
 N_SERVERS=4
@@ -62,7 +62,7 @@ scaling_factor=$(echo "define max(a,b){if(a>b) return (a) else return (b)};scale
 
 echo "Scaling the 300 MB Twitter dataset ${scaling_factor}x = $used_mem_mb MB..."
 
-log_name=memcached-nservers-${N_SERVERS}-memtotal-${used_mem_mb}-MB.log
+log_name=memcached-nservers-${N_SERVERS}-memtotal-${used_mem_mb}-MB-$(date +%Y-%m-%d-%H:%m:%S).log
 
 cmds="
 cd /usr/src/memcached/memcached_client/;
