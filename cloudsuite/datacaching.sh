@@ -33,8 +33,8 @@ cleanup() {
 
 trap "{ cleanup; exit; }" EXIT TERM QUIT INT
 
-frac_server=0.8 # portion of available memory 
-total_mem_mb=$(grep MemAvailable /proc/meminfo | awk '{print $2/1024}') # MemAvailable MB
+frac_server=0.6 # portion of total memory 
+total_mem_mb=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}')
 N_SERVERS=4
 server_mem_mb=$(echo "scale=2;($frac_server * $total_mem_mb) / $N_SERVERS" | bc -l)
 server_names=   # used for docker_servers.txt
@@ -57,9 +57,11 @@ echo "...done."
 # server (scaling factor of 30).
 # Instead, we will compute the scaling factor based on the amount of memory
 # available on the system.
-scaling_factor=$(echo "define max(a,b){if(a>b) return (a) else return (b)};scale=4;max(1, (1 - $frac_server) * $total_mem_mb / 300)" | bc -l)
+scaling_factor=$(echo "define max(a,b){if(a>b) return (a) else return (b)};scale=4;max(1, $frac_server * $total_mem_mb / 300)" | bc -l)
 
 echo "Scaling the 300 MB Twitter dataset ${scaling_factor}x = $total_mem_mb MB..."
+
+log_name=memcached-nservers-${N_SERVERS}-memtotal-${total_mem_mb}-MB.log
 
 cmds="
 cd /usr/src/memcached/memcached_client/;
@@ -71,8 +73,21 @@ echo \"Scaling Twitter dataset ...\";
 -S ${scaling_factor} -D $server_mem_mb -j -T 1;
 echo \"Running the benchmark with maximum throughput ...\";
 ./loader -a ../twitter_dataset/twitter_dataset_${scaling_factor}x \
--s docker_servers.txt -g 0.8 -T 1 -c 200 -w 8 | tee ./memcached-nservers-${N_SERVERS}-mem-${server_mem_mb}-MB.log
+-s docker_servers.txt -g 0.8 -T 1 -c 200 -w 8 | tee ./$log_name
 "
+
+# PID of copy_log()
+child_pid=
+
+# I can't figure out how to mount the container the right way, so just copy the
+# log over every 20 seconds
+function copy_log() {
+    while true; do
+        printf "[%s] Copying $log_name over ..." "$(date)"
+        docker cp dc-client:/usr/src/memcached/memcached_client/$log_name .
+        sleep 20
+    done
+}
 
 # the first call to ./loader creates the scaled file, and the second
 # call runs the server
@@ -82,12 +97,16 @@ echo \"Running the benchmark with maximum throughput ...\";
 
 echo "cmds: $cmds"
 
-
 #    -v $(pwd)/memcached-logs:/usr/src/memcached/memcached_client \
 echo "Running dc-client ..."
-docker run -it --name dc-client --net caching_network \
+copy_log &
+child_pid=$!
+docker run --rm -it --name dc-client --net caching_network \
     cloudsuite/data-caching:client \
     bash -c "$cmds"
 echo "...done."
+
+kill -9 $child_pid
+wait $child_pid
 
 # cleanup
