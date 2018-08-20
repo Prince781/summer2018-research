@@ -82,10 +82,12 @@ echo \"Running the benchmark with maximum throughput ...\";
 
 echo "cmds: $cmds"
 
+
+#    -v $(pwd)/memcached-logs:/usr/src/memcached/memcached_client \
 echo "Running dc-client ..."
-docker run -it --name dc-client \
--v $(pwd)/memcached-logs:/usr/src/memcached/memcached_client\
---net caching_network cloudsuite/data-caching:client bash -c "$cmds"
+docker run -it --name dc-client --net caching_network \
+    cloudsuite/data-caching:client \
+    bash -c "$cmds"
 echo "...done."
 
 # cleanup
