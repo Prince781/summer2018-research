@@ -33,10 +33,11 @@ cleanup() {
 
 trap "{ cleanup; exit; }" EXIT TERM QUIT INT
 
-frac_server=0.6 # portion of total memory 
+frac_server=0.7 # portion of total memory 
 total_mem_mb=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}')
+used_mem_mb=$(echo "scale=2;$frac_server * $total_mem_mb" | bc -l)
 N_SERVERS=4
-server_mem_mb=$(echo "scale=2;($frac_server * $total_mem_mb) / $N_SERVERS" | bc -l)
+server_mem_mb=$(echo "scale=2;$used_mem_mb / $N_SERVERS" | bc -l)
 server_names=   # used for docker_servers.txt
 
 echo "Creating $N_SERVERS servers with $server_mem_mb MB each (total of $(echo "scale=2;$frac_server * 100" | bc -l)% of available mem) ..."
@@ -57,11 +58,11 @@ echo "...done."
 # server (scaling factor of 30).
 # Instead, we will compute the scaling factor based on the amount of memory
 # available on the system.
-scaling_factor=$(echo "define max(a,b){if(a>b) return (a) else return (b)};scale=4;max(1, $frac_server * $total_mem_mb / 300)" | bc -l)
+scaling_factor=$(echo "define max(a,b){if(a>b) return (a) else return (b)};scale=4;max(1, $used_mem_mb / 300)" | bc -l)
 
-echo "Scaling the 300 MB Twitter dataset ${scaling_factor}x = $total_mem_mb MB..."
+echo "Scaling the 300 MB Twitter dataset ${scaling_factor}x = $used_mem_mb MB..."
 
-log_name=memcached-nservers-${N_SERVERS}-memtotal-${total_mem_mb}-MB.log
+log_name=memcached-nservers-${N_SERVERS}-memtotal-${used_mem_mb}-MB.log
 
 cmds="
 cd /usr/src/memcached/memcached_client/;
